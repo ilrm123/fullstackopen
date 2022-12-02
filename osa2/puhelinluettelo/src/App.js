@@ -1,25 +1,113 @@
-import logo from './logo.svg';
-import './App.css';
+import { useState } from 'react'
 
-function App() {
+const App = () => {
+  const [persons, setPersons] = useState([]) 
+  const [newName, setNewName] = useState('')
+  const [newNumber, setNewNumber] = useState('')
+  const [search, setSearch] = useState('')
+
+  const handleNameChange = (event) => {
+    setNewName(event.target.value)
+  }
+
+  const handleNumberChange = (event) => {
+    setNewNumber(event.target.value)
+  }
+
+  const handleSearchChange = (event) => {
+    setSearch(event.target.value)
+  }
+
+  const personsToShow = persons.filter(person => person.name.includes(search))
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+    <div>
+      <h2>Phonebook</h2>
+      <Filter
+        search={search}
+        setSearch={setSearch}
+        persons={persons}
+        handleSearchChange={handleSearchChange}
+      />
+      <h2>add a new</h2>
+      <PersonForm
+        newName={newName}
+        setNewName={setNewName}
+        newNumber={newNumber}
+        setNewNumber={setNewNumber}
+        persons={persons}
+        setPersons={setPersons}
+        handleNameChange={handleNameChange}
+        handleNumberChange={handleNumberChange}
+       />
+      <h2>Numbers</h2>
+      <Persons
+        persons={persons}
+        personsToShow={personsToShow}
+      />
     </div>
-  );
+  )
+
 }
 
-export default App;
+const PersonForm = (props) => {
+  
+  const addNameNumber = (event) => {
+    event.preventDefault()
+    const nameObject = {
+      name: props.newName,
+      number: props.newNumber,
+    }
+    
+    const contains = props.persons.some(person => {
+      return JSON.stringify({name: props.newName}) === JSON.stringify(person)
+    })
+
+    if (contains) {
+      alert(`${props.newName} is already added to phonebook`)
+    } else {
+      props.setPersons(props.persons.concat(nameObject))
+      props.setNewName('')
+      props.setNewNumber('')
+    }
+  }
+
+  return (
+    <form onSubmit={addNameNumber}>
+    name: <input
+      value={props.newName}
+      onChange={props.handleNameChange}
+    />
+    <br></br>
+    number: <input
+      value={props.newNumber}
+      onChange={props.handleNumberChange}
+    />
+    <button type="submit">add</button>
+  </form>
+  )
+}
+
+const Filter = (props) => {
+
+  return (
+    <form>
+    filter shown with: <input
+      value={props.search}
+      onChange={props.handleSearchChange}
+    />
+  </form>
+  )
+}
+
+const Persons = (props) => {
+
+  return (
+    <ul>
+      {props.personsToShow.map(person => 
+          <li key={person.name}>{person.name} {person.number}</li>)}
+    </ul>
+  )
+}
+
+export default App

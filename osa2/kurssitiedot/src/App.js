@@ -46,9 +46,6 @@ const App = () => {
     }
   ]
 
-  console.log("ass")
-  console.log(courses.map(course => course))
-
   const result = courses.map(course => <Course course={course}/>)
 
 
