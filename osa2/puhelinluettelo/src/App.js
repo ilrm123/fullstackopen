@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
-import axios from 'axios'
+import personService from './services/persons'
 
 const App = () => {
   const [persons, setPersons] = useState([]) 
   const [newName, setNewName] = useState('')
   const [newNumber, setNewNumber] = useState('')
   const [search, setSearch] = useState('')
+  const [message, setMessage] = useState(null)
 
   const handleNameChange = (event) => {
     setNewName(event.target.value)
@@ -22,11 +23,9 @@ const App = () => {
   const personsToShow = persons.filter(person => person.name.includes(search))
 
   const hook = () => {
-    console.log('effect')
-    axios
-      .get('http://localhost:3001/persons')
+    personService
+      .getAll()
       .then(response => {
-        console.log('promise fulfilled')
         setPersons(response.data)
       })
   }
@@ -36,13 +35,14 @@ const App = () => {
   return (
     <div>
       <h2>Phonebook</h2>
+      <Notification message={message} />
       <Filter
         search={search}
         setSearch={setSearch}
         persons={persons}
         handleSearchChange={handleSearchChange}
       />
-      <h2>add a new</h2>
+      <h2>Add a new person</h2>
       <PersonForm
         newName={newName}
         setNewName={setNewName}
@@ -52,11 +52,16 @@ const App = () => {
         setPersons={setPersons}
         handleNameChange={handleNameChange}
         handleNumberChange={handleNumberChange}
+        message={message}
+        setMessage={setMessage}
        />
       <h2>Numbers</h2>
       <Persons
         persons={persons}
+        setPersons={setPersons}
         personsToShow={personsToShow}
+        message={message}
+        setMessage={setMessage}
       />
     </div>
   )
@@ -73,15 +78,45 @@ const PersonForm = (props) => {
     }
     
     const contains = props.persons.some(person => {
-      return JSON.stringify({name: props.newName}) === JSON.stringify(person)
+      return JSON.stringify(props.newName) === JSON.stringify(person.name)
     })
 
     if (contains) {
-      alert(`${props.newName} is already added to phonebook`)
+      const confirmed = window.confirm(`${props.newName} is already added to phonebook, replace old number with new one?`)
+      if (confirmed) {
+        const id = parseInt(Object.keys(props.persons).find(person => props.persons[person].name === props.newName))+1
+        personService
+        .update(id, nameObject)
+        .then(response => {
+          props.setPersons(props.persons.concat(response.data))
+          personService
+            .getAll()
+            .then(response => {
+              props.setPersons(response.data)
+            })
+          props.setNewName('')
+          props.setNewNumber('')
+          props.setMessage(`${props.newName}'s number replaced!`)
+          setTimeout(() => {
+            props.setMessage(null)
+          }, 5000)
+        }).catch(error => {
+          alert('This person was already deleted from the server')
+          props.setPersons(props.persons.filter(n => n.id !== id))
+        })
+      }
     } else {
-      props.setPersons(props.persons.concat(nameObject))
-      props.setNewName('')
-      props.setNewNumber('')
+      personService
+      .create(nameObject)
+      .then(response => {
+        props.setPersons(props.persons.concat(response.data))
+        props.setNewName('')
+        props.setNewNumber('')
+        props.setMessage(`${props.newName} added to phonebook!`)
+        setTimeout(() => {
+          props.setMessage(null)
+        }, 5000)
+      })
     }
   }
 
@@ -114,12 +149,51 @@ const Filter = (props) => {
 }
 
 const Persons = (props) => {
+  const DeletePerson = (id) => {
+    const confirmed = window.confirm('Delete this person?')
+
+    if (confirmed) {
+      personService
+        .remove(id)
+        .then(response => {
+          console.log(response.data)
+          props.setPersons(props.persons.filter(n => n.id !== id))
+          props.setMessage(`Deletion successful!`)
+          setTimeout(() => {
+            props.setMessage(null)
+          }, 5000)
+      })}
+  
+    return 
+  }
 
   return (
     <ul>
       {props.personsToShow.map(person => 
-          <li key={person.name}>{person.name} {person.number}</li>)}
+          <li key={person.name}>{person.name} {person.number} <button onClick={() => DeletePerson(person.id)}>Delete</button></li>)}
     </ul>
+  )
+}
+
+const Notification = ({ message }) => {
+  const Style = {
+    color: 'green',
+    background: 'lightgrey',
+    fontSize: 20,
+    borderStyle: 'solid',
+    borderRadius: 5,
+    padding: 10,
+    marginBottom: 10
+  }
+
+  if (message === null) {
+    return null
+  }
+
+  return (
+    <div style={Style}>
+      {message}
+    </div>
   )
 }
 
