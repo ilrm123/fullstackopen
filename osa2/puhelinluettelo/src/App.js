@@ -116,6 +116,8 @@ const PersonForm = (props) => {
         setTimeout(() => {
           props.setMessage(null)
         }, 5000)
+      }).catch(error => {
+        alert(error)
       })
     }
   }
@@ -169,7 +171,7 @@ const Persons = (props) => {
 
   return (
     <ul>
-      {props.personsToShow.map(person => 
+      {props.personsToShow.map((person) => 
           <li key={person.name}>{person.name} {person.number} <button onClick={() => DeletePerson(person.id)}>Delete</button></li>)}
     </ul>
   )
