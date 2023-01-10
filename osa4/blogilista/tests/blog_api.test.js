@@ -55,7 +55,7 @@ test('blogs have id', async () => {
 })
 
 test('new blog can be added', async () => {
-  const newblog = {
+  const newBlog = {
     title: 'newblog',
     author: 'newauthor',
     url: 'newurl.com',
@@ -64,7 +64,7 @@ test('new blog can be added', async () => {
   
   await api
     .post('/api/blogs')
-    .send(newblog)
+    .send(newBlog)
     .expect(201)
     .expect('Content-Type', /application\/json/)
 
@@ -75,7 +75,7 @@ test('new blog can be added', async () => {
 })
 
 test('likes value is 0 when not given', async () => {
-  const newblog = {
+  const newBlog = {
     title: 'nolikes',
     author: 'unlikedauthor',
     url: 'nolikes.com',
@@ -83,7 +83,7 @@ test('likes value is 0 when not given', async () => {
   
   await api
     .post('/api/blogs')
-    .send(newblog)
+    .send(newBlog)
     .expect(201)
     .expect('Content-Type', /application\/json/)
 
