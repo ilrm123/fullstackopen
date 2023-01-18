@@ -46,16 +46,17 @@ blogsRouter.delete('/:id', async (request, response) => {
   const iidee = mongoose.Types.ObjectId(request.url.substring(1))
   const blog = await Blog.findById(iidee)
 
-  console.log(iidee)
-  console.log(user._id)
-  console.log(blog)
-
   if (blog.user.toString() === user._id.toString()) {
     await Blog.findByIdAndRemove(request.params.id)
     response.status(204).end()
   } else {
     response.status(400).end('wrong user')
   }
+})
+
+blogsRouter.put('/:id', async (request, response) => {
+  await Blog.findByIdAndUpdate(request.params.id, request.body, { new: true })
+  response.status(204).end()
 })
 
 
