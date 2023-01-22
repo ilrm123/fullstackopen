@@ -2,6 +2,19 @@ import { useState, useEffect } from 'react'
 import Blog from './components/Blog'
 import blogService from './services/blogs'
 import loginService from './services/login'
+import {
+  BrowserRouter as Router,
+  Routes, Route, Link
+} from "react-router-dom"
+import {
+  // ...
+  useParams
+} from "react-router-dom"
+import {
+  // ...
+  useNavigate
+} from 'react-router-dom'
+
 
 const App = () => {
   const [blogs, setBlogs] = useState([])
@@ -175,6 +188,118 @@ const App = () => {
     )
   }
 
+  const BlogList = () => (
+    <div>
+      {sortedBlogs.map(blog =>
+        <Blog key={blog.id} blog={blog} />
+      )}
+    </div>
+  )
+
+  const UserList = () => {
+    let users = blogs.map(blog => blog.user)
+    let uniqueUsers = []
+    let userBlogs = []
+    users.forEach(user => {
+      if (!uniqueUsers.includes(user.username)) {
+        uniqueUsers.push(user.username)
+        userBlogs.push({user: user.username, blogs: 1})
+      } else {
+        let u = userBlogs.find(n => n.user === user.username)
+        u.blogs = u.blogs + 1
+      }
+    })
+  
+    return (
+      <div>
+        <h3>List of users and amount of blogs created:</h3>
+        {userBlogs.map(blog =>
+          <div><Link to={`/users/${users.find(n => n.username === blog.user).id}`}>{blog.user}</Link>: Has created {blog.blogs} blogs</div>
+        )}
+      </div>
+    )
+  }
+
+  const UserView = () => {
+    const id = useParams().id
+    const userBlogs = blogs.filter(blog => blog.user.id === id)
+    const users = blogs.map(blog => blog.user)
+    const user = users.find(n => n.id === id)
+    if (!user) {
+      return null
+    }
+    
+
+    return (
+      <div>
+        <h3>{user.username}</h3>
+        <h4>Added blogs:</h4>
+        {userBlogs.map(blog =>
+          <div><li>{blog.title}</li></div>
+        )}
+      </div>
+    )
+  }
+
+  const BlogView = () => {
+    const id = useParams().id
+    const blog = blogs.find(n => n.id === id)
+    console.log(blog)
+    if (!blog) {
+      return null
+    }
+
+    const handleLike = () => {
+      blogService.like(blog)
+    }
+
+    return (
+      <div>
+        <h1>{blog.title}</h1>
+        <h4>Url: {blog.url}</h4>
+        <h4>{blog.likes} likes</h4>
+        <button onClick={handleLike}>Like</button>
+        <h4>Added by {blog.user.username}</h4>
+      </div>
+    )
+  }
+
+  const Navigation = () => {
+    const padding = {
+      paddingRight: 30,
+      paddingLeft: 15
+    }
+
+    const Style = {
+      color: 'purple',
+      background: 'lightgrey',
+      fontSize: 20,
+      borderStyle: 'solid',
+      borderRadius: 3,
+      padding: 1,
+      marginBottom: 3
+    }
+
+    return (
+      <Router>
+      <div style={Style}>
+        <h3>
+          <Link style={padding} to="/">All blogs</Link>
+          <Link style={padding} to="/users">Users</Link>
+          <button onClick={handleLogout}>Log out</button>
+        </h3>
+      </div>
+
+      <Routes>
+        <Route path="/" element={<BlogList />} />
+        <Route path="/users" element={<UserList />} />
+        <Route path="/users/:id" element={<UserView />} />
+        <Route path="/blogs/:id" element={<BlogView />} />
+      </Routes>
+    </Router>
+    )
+  }
+
   return (
     <div>
       <h1>Blogs site for cool blogs</h1>
@@ -184,13 +309,8 @@ const App = () => {
       {user === null ?
         loginForm() :
         <div>
-          <p>Logged in as {JSON.parse(window.localStorage.getItem('LoggedBlogAppUser')).username}</p>
-          {sortedBlogs.map(blog =>
-            <Blog key={blog.id} blog={blog} />
-          )}
-          <br></br>
-          <br></br>
-          <button onClick={handleLogout}>Log out</button>
+          <div><p>Logged in as {JSON.parse(window.localStorage.getItem('LoggedBlogAppUser')).username}</p></div>
+          <Navigation />
           <br></br>
           <button onClick={handleBlogFormButton}>Create new blog</button>
 

@@ -1,5 +1,9 @@
 import { useState } from 'react'
 import blogService from '../services/blogs'
+import {
+  BrowserRouter as Router,
+  Routes, Route, Link
+} from "react-router-dom"
 
 const Blog = ({ blog }) => {
   const [show, setShow] = useState(false)
@@ -26,7 +30,7 @@ const Blog = ({ blog }) => {
 
   return (
     <div>
-      {blog.title}, written by {blog.author}
+      <Link to={`/blogs/${blog.id}`}>{blog.title}</Link>, written by {blog.author}
 
       {show === true
         ? <div></div> : <button id="showbutton" onClick={handleShowButton}>Show</button>}
