@@ -12,7 +12,10 @@ const NEW_BOOK = gql`
     ) {
       title
       published
-      author
+      author {
+        name
+        born
+      }
       id
       genres
     }

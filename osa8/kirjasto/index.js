@@ -1,8 +1,18 @@
 const { ApolloServer } = require('@apollo/server')
+const { expressMiddleware } = require('@apollo/server/express4')
+const { ApolloServerPluginDrainHttpServer } = require('@apollo/server/plugin/drainHttpServer')
+const { makeExecutableSchema } = require('@graphql-tools/schema')
+const express = require('express')
+const cors = require('cors')
+const bodyParser = require('body-parser')
+const http = require('http')
 const { v1: uuid } = require('uuid')
 const { startStandaloneServer } = require('@apollo/server/standalone')
 const { GraphQLError } = require('graphql')
 const jwt = require('jsonwebtoken')
+
+const { WebSocketServer } = require('ws')
+const { useServer } = require('graphql-ws/lib/use/ws')
 
 const mongoose = require('mongoose')
 mongoose.set('strictQuery', false)
@@ -10,6 +20,9 @@ const Author = require('./models/author')
 const Book = require('./models/book')
 const User = require('./models/user')
 require('dotenv').config()
+
+const { PubSub } = require('graphql-subscriptions')
+const pubsub = new PubSub()
 
 const MONGODB_URI = process.env.MONGODB_URI
 
@@ -128,6 +141,10 @@ const typeDefs = `
     value: String!
   }
 
+  type Subscription {
+    bookAdded: Book!
+  }
+
   type Mutation {
     addBook(
       title: String!
@@ -201,7 +218,7 @@ const resolvers = {
       } else {
         const newauthor = new Author({ name: args.author, born: null })
         book = new Book({ ...args, author:  newauthor.id})
-        console.log(newauthor)
+        
         try {
           await newauthor.save()
         } catch (error) {
@@ -258,6 +275,8 @@ const resolvers = {
         }
       }
 
+      pubsub.publish('BOOK_ADDED', { bookAdded: book })
+
       return book
     },
     editAuthor: async (root, args, context) => {
@@ -310,29 +329,69 @@ const resolvers = {
       return { value: jwt.sign(userForToken, process.env.JWT_SECRET) }
     },
   },
+  Subscription: {
+    bookAdded: {
+      subscribe: () => pubsub.asyncIterator('BOOK_ADDED')
+    },
+  },
   Author: {
     bookCount: async (root) => await Book.find({ author: root.id }).countDocuments()
+  },
+  Book: {
+    author: async (root) => {
+      const existingauthors = await Author.find({})
+      const thatauthor = existingauthors.find(a => a._id.toString() === root.author.toString())
+
+      return thatauthor
+    }
   }
 }
 
-const server = new ApolloServer({
-  typeDefs,
-  resolvers,
-})
+const start = async () => {
+  const app = express()
+  const httpServer = http.createServer(app)
 
-startStandaloneServer(server, {
-  listen: { port: 4000 },
-  context: async ({ req, res }) => {
-    const auth = req ? req.headers.authorization : null
-    if (auth && auth.startsWith('Bearer ')) {
-      const decodedToken = jwt.verify(
-        auth.substring(7), process.env.JWT_SECRET
-      )
-      const currentUser = await User
-        .findById(decodedToken.id)
-      return { currentUser }
-    }
-  },
-}).then(({ url }) => {
-  console.log(`Server ready at ${url}`)
-})
+  const wsServer = new WebSocketServer({
+    server: httpServer,
+    path: '/',
+  })
+  
+  const schema = makeExecutableSchema({ typeDefs, resolvers })
+  const serverCleanup = useServer({ schema }, wsServer)
+
+  const server = new ApolloServer({
+    schema: makeExecutableSchema({ typeDefs, resolvers }),
+    plugins: [ApolloServerPluginDrainHttpServer({ httpServer }),
+      {
+        async serverWillStart() {
+          return {
+            async drainServer() {
+              await serverCleanup.dispose();
+            },
+          };
+        },
+      },
+    ],
+  })
+  await server.start()
+  app.use(
+    '/',
+    cors(),
+    express.json(),
+    expressMiddleware(server, {
+      context: async ({ req }) => {
+        const auth = req ? req.headers.authorization : null
+        if (auth && auth.startsWith('Bearer ')) {
+          const decodedToken = jwt.verify(auth.substring(7), process.env.JWT_SECRET)
+          const currentUser = await User.findById(decodedToken.id)
+          return { currentUser }
+        }
+      },
+    }),
+  )
+  const PORT = 4000
+  httpServer.listen(PORT, () =>
+    console.log(`Server is now running on http://localhost:${PORT}`)
+  )
+}
+start()

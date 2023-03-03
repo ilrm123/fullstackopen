@@ -12,6 +12,7 @@ const ALL_AUTHORS = gql`
     }
   }
 `
+
 const CHANGE_BORN = gql`
   mutation changeBorn($name: String!, $setBornTo: Int!) {
     editAuthor(
